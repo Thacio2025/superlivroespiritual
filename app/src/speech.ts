@@ -1,7 +1,7 @@
 /**
  * Azure Speech (Microsoft Cognitive Services) no browser.
- * No iPhone/Safari o play() após síntese assíncrona é bloqueado; por isso no iOS
- * usamos a Web Speech API (voz nativa), que funciona no botão Ouvir.
+ * Sintetiza para MP3 em stream e toca via elemento <audio> (compatível com iOS
+ * quando o áudio é "desbloqueado" no clique, no App).
  */
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
@@ -12,13 +12,6 @@ const SPEECH_RATE = "70%";
 const TOKEN_TTL_MS = 9 * 60 * 1000;
 /** Tamanho máximo por bloco de síntese (evita timeout em textos muito longos). */
 const CHUNK_MAX_CHARS = 3500;
-
-/** Detecta iPhone/iPad/Safari iOS para usar Web Speech API (Azure play() é bloqueado no iOS). */
-function isIOS(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
 
 /** Coleta os bytes de áudio da síntese para tocar via HTML Audio. */
 class StreamCollector extends sdk.PushAudioOutputStreamCallback {
@@ -142,63 +135,7 @@ async function synthesizeAndPlayChunk(
   }
 }
 
-/** No iOS: usa a Web Speech API (voz nativa), pois play() após síntese Azure é bloqueado. */
-function speakWithWebSpeech(text: string): Promise<void> {
-  const synth = window.speechSynthesis;
-  if (!synth) return Promise.reject(new Error("Voz não disponível neste navegador."));
-
-  const trimmed = text.trim();
-  if (!trimmed) return Promise.resolve();
-
-  // iOS tem limite por utterance; dividir em frases ou ~250 caracteres.
-  const maxLen = 250;
-  const parts: string[] = [];
-  let rest = trimmed;
-  while (rest.length > 0) {
-    if (rest.length <= maxLen) {
-      parts.push(rest);
-      break;
-    }
-    const slice = rest.slice(0, maxLen);
-    const last = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf(" "), slice.lastIndexOf("\n"));
-    const cut = last > maxLen / 2 ? last + 1 : maxLen;
-    parts.push(rest.slice(0, cut).trim());
-    rest = rest.slice(cut).trim();
-  }
-
-  const voices = synth.getVoices();
-  const ptBr = voices.find((v) => v.lang === "pt-BR" || v.lang.startsWith("pt_BR"));
-  const ptAny = voices.find((v) => v.lang.startsWith("pt"));
-
-  return new Promise((resolve, reject) => {
-    let i = 0;
-    const speakNext = () => {
-      if (i >= parts.length) {
-        resolve();
-        return;
-      }
-      const u = new SpeechSynthesisUtterance(parts[i]);
-      u.lang = "pt-BR";
-      u.rate = 0.7;
-      if (ptBr) u.voice = ptBr;
-      else if (ptAny) u.voice = ptAny;
-      u.onend = () => {
-        i++;
-        speakNext();
-      };
-      u.onerror = () => reject(new Error("Erro na leitura"));
-      synth.speak(u);
-    };
-    speakNext();
-  });
-}
-
 export async function speak(text: string): Promise<void> {
-  if (isIOS()) {
-    await speakWithWebSpeech(text);
-    return;
-  }
-
   const { token, region } = await getToken();
 
   const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);

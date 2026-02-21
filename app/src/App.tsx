@@ -38,9 +38,14 @@ export default function App() {
 
   const handleSpeak = useCallback(async () => {
     if (!passage.trim()) return;
+    // No iOS o play() após async é bloqueado; desbloqueia áudio com play() síncrono no clique.
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = 0;
+      audio.play(); // síncrono = mesmo gesto do usuário
+    }
     setError("");
     setStatus("speaking");
-    // No celular, música e voz ao mesmo tempo podem conflitar; pausa a música durante a leitura.
     const wasMusicOn = musicOn;
     if (wasMusicOn && audioRef.current) {
       audioRef.current.pause();
@@ -52,10 +57,11 @@ export default function App() {
       setStatus("error");
     } finally {
       setStatus("idle");
-      // Retoma a música se estava ligada antes da leitura.
       if (wasMusicOn && audioRef.current) {
         audioRef.current.volume = 0.2;
         audioRef.current.play().catch(() => {});
+      } else if (audioRef.current) {
+        audioRef.current.pause(); // só tinha dado play para desbloquear
       }
     }
   }, [passage, musicOn]);
