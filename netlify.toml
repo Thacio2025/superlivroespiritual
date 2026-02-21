@@ -1,0 +1,15 @@
+# Super Livro — site e funções serverless
+# Deploy: conecte o repositório no Netlify e configure as variáveis de ambiente
+
+[build]
+  command = "cd app && npm ci && npm run build"
+  publish = "app/dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

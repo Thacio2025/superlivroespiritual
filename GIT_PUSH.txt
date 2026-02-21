@@ -1,0 +1,14 @@
+# Enviar o projeto para o GitHub
+# Abra o Terminal, vá até a pasta do projeto e rode um comando por vez:
+
+cd "/Users/thaciosiqueira/Desktop/SUPER LIVRO"
+
+git init
+git add .
+git commit -m "Super Livro — site e funções Netlify"
+git branch -M main
+git remote add origin https://github.com/Thacio2025/superlivroespiritual.git
+git push -u origin main
+
+# Se pedir login: use seu usuário do GitHub e, como senha, um Personal Access Token (não a senha da conta).
+# Criar token: GitHub → Settings → Developer settings → Personal access tokens.
