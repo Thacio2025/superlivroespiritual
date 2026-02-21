@@ -1,7 +1,7 @@
 /**
  * Azure Speech (Microsoft Cognitive Services) no browser.
- * Token é pré-buscado e em cache para o som sair no primeiro clique (evita bloqueio do navegador).
- * Textos longos são divididos em blocos para não estourar limite/timeout.
+ * No iPhone/Safari o áudio do SDK (fromDefaultSpeakerOutput) não toca; por isso
+ * sintetizamos para MP3 em stream e tocamos via elemento <audio>, como a música.
  */
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
@@ -12,6 +12,35 @@ const SPEECH_RATE = "70%";
 const TOKEN_TTL_MS = 9 * 60 * 1000;
 /** Tamanho máximo por bloco de síntese (evita timeout em textos muito longos). */
 const CHUNK_MAX_CHARS = 3500;
+
+/** Coleta os bytes de áudio da síntese para tocar via HTML Audio (funciona no iPhone). */
+class StreamCollector extends sdk.PushAudioOutputStreamCallback {
+  private chunks: ArrayBuffer[] = [];
+  write(dataBuffer: ArrayBuffer): void {
+    this.chunks.push(dataBuffer);
+  }
+  close(): void {}
+  getBlob(): Blob {
+    return new Blob(this.chunks, { type: "audio/mpeg" });
+  }
+}
+
+/** Toca um Blob de áudio via elemento Audio (mesmo caminho da música, compatível com iOS). */
+function playBlobAsAudio(blob: Blob): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Falha ao reproduzir áudio"));
+    };
+    audio.play().catch(reject);
+  });
+}
 
 let cached: { token: string; region: string; at: number } | null = null;
 
@@ -75,20 +104,35 @@ function splitIntoChunks(text: string): string[] {
   return chunks.filter(Boolean);
 }
 
-function speakChunk(
-  synthesizer: sdk.SpeechSynthesizer,
+/** Sintetiza um bloco SSML para MP3 e toca via HTML Audio (compatível com iPhone). */
+async function synthesizeAndPlayChunk(
+  speechConfig: sdk.SpeechConfig,
   ssml: string
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
+  const collector = new StreamCollector();
+  const stream = sdk.PushAudioOutputStream.create(collector);
+  const audioConfig = sdk.AudioConfig.fromStreamOutput(stream);
+  const synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
+
+  await new Promise<void>((resolve, reject) => {
     synthesizer.speakSsmlAsync(
       ssml,
-      () => resolve(),
+      () => {
+        synthesizer.close();
+        resolve();
+      },
       (err) => {
+        synthesizer.close();
         const msg = typeof err === "string" ? err : "Falha na síntese de voz.";
         reject(new Error(msg));
       }
     );
   });
+
+  const blob = collector.getBlob();
+  if (blob.size > 0) {
+    await playBlobAsAudio(blob);
+  }
 }
 
 export async function speak(text: string): Promise<void> {
@@ -96,8 +140,9 @@ export async function speak(text: string): Promise<void> {
 
   const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);
   speechConfig.speechSynthesisVoiceName = VOICE;
-  const audioConfig = sdk.AudioConfig.fromDefaultSpeakerOutput();
-  const synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
+  // MP3 em stream e reprodução via <audio> funcionam no Safari/iPhone; o speaker do SDK não.
+  speechConfig.speechSynthesisOutputFormat =
+    sdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3;
 
   const chunks = splitIntoChunks(text);
   const ssmlParts = chunks.map(
@@ -105,11 +150,7 @@ export async function speak(text: string): Promise<void> {
       `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="pt-BR"><voice name="${VOICE}"><prosody rate="${SPEECH_RATE}">${escapeSsml(chunk)}</prosody></voice></speak>`
   );
 
-  try {
-    for (const ssml of ssmlParts) {
-      await speakChunk(synthesizer, ssml);
-    }
-  } finally {
-    synthesizer.close();
+  for (const ssml of ssmlParts) {
+    await synthesizeAndPlayChunk(speechConfig, ssml);
   }
 }
