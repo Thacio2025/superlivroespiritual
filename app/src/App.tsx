@@ -104,10 +104,12 @@ export default function App() {
           className="btn-secondary"
           onClick={handleSpeak}
           disabled={busy || !passage.trim()}
+          title="Voz Azure (pt-BR). Se não ouvir, permita áudio para este site e confira as variáveis no Netlify."
         >
           {status === "speaking" ? "Reproduzindo…" : "Ouvir (voz)"}
         </button>
       </div>
+      <p className="hint">Se a voz não sair, permita áudio para este site no navegador e confira AZURE_SPEECH_KEY e AZURE_SPEECH_REGION no Netlify.</p>
 
       <p className="status">
         {status === "generating" && "Gerando trecho…"}

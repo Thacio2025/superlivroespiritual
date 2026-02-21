@@ -141,6 +141,14 @@ button:not(:disabled):active {
   margin: 2rem 0;
 }
 
+.hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  margin: -0.5rem 0 0.75rem 0;
+  max-width: 36rem;
+}
+
 .status {
   text-align: center;
   color: var(--muted);

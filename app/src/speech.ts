@@ -9,7 +9,12 @@ export async function speak(text: string): Promise<void> {
   const tokenRes = await fetch(`${API}/speech-token`);
   if (!tokenRes.ok) {
     const data = await tokenRes.json().catch(() => ({}));
-    throw new Error(data.error || "Voz não disponível. Configure AZURE_SPEECH_KEY e REGION no Netlify.");
+    const msg = data.error || "Voz não disponível.";
+    throw new Error(
+      msg.includes("não configurado")
+        ? `${msg} Configure AZURE_SPEECH_KEY e AZURE_SPEECH_REGION no Netlify (Environment variables).`
+        : msg
+    );
   }
   const { token, region } = (await tokenRes.json()) as { token: string; region: string };
 
@@ -29,7 +34,11 @@ export async function speak(text: string): Promise<void> {
       },
       (err) => {
         synthesizer.close();
-        reject(new Error(err || "Falha na síntese de voz"));
+        const msg =
+          typeof err === "string"
+            ? err
+            : "Falha na síntese de voz. Verifique AZURE_SPEECH_KEY e AZURE_SPEECH_REGION no Netlify e permita áudio para este site no navegador.";
+        reject(new Error(msg));
       }
     );
   });

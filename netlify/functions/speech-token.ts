@@ -26,9 +26,17 @@ export const handler: Handler = async () => {
   });
 
   if (!res.ok) {
+    const body = await res.text();
+    const msg =
+      res.status === 401
+        ? "Chave Azure inválida. Confira AZURE_SPEECH_KEY no Netlify (Chave 1 do recurso Speech)."
+        : res.status === 404
+          ? "Região inválida. Confira AZURE_SPEECH_REGION (ex.: brazilsouth)."
+          : `Falha ao obter token Azure (${res.status}). ${body || ""}`;
     return {
       statusCode: res.status,
-      body: JSON.stringify({ error: "Falha ao obter token Azure Speech" }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: msg }),
     };
   }
 
