@@ -1,7 +1,10 @@
-import { useState, useCallback } from "react";
-import { speak } from "./speech";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { speak, prefetchToken } from "./speech";
 
 const API = "/.netlify/functions";
+
+// Cole aqui o link da música (URL direta do arquivo de áudio, ex.: .mp3)
+const MUSIC_URL = "https://music.wixstatic.com/preview/e585d6_936d907499184b5b8cb49b18deca407d-128.mp3";
 
 type Status = "idle" | "generating" | "speaking" | "error";
 
@@ -10,6 +13,8 @@ export default function App() {
   const [passage, setPassage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const [musicOn, setMusicOn] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleGenerate = useCallback(async () => {
     setError("");
@@ -44,12 +49,43 @@ export default function App() {
     }
   }, [passage]);
 
+  // Pré-busca o token quando há fragmento; assim o primeiro "Ouvir" já tem token e o som sai.
+  useEffect(() => {
+    if (passage.trim()) prefetchToken();
+  }, [passage]);
+
+  const toggleMusic = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (musicOn) {
+      audio.pause();
+    } else {
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+    }
+    setMusicOn(!musicOn);
+  }, [musicOn]);
+
   const busy = status === "generating" || status === "speaking";
 
   return (
     <div className="app">
+      <audio ref={audioRef} src={MUSIC_URL || undefined} loop />
       <header className="header">
-        <span className="header-label">Escriba do Deserto</span>
+        <div className="header-top">
+          <span className="header-label">Escriba do Deserto</span>
+          {MUSIC_URL && (
+            <button
+              type="button"
+              className={`btn-music ${musicOn ? "on" : ""}`}
+              onClick={toggleMusic}
+              title={musicOn ? "Desligar música" : "Ligar música"}
+              aria-label={musicOn ? "Desligar música" : "Ligar música"}
+            >
+              {musicOn ? "🔊 Música" : "🔇 Música"}
+            </button>
+          )}
+        </div>
         <h1>Super Livro</h1>
         <p>Fragmentos de sabedoria para a Lectio Divina</p>
       </header>

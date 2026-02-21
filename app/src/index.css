@@ -70,14 +70,33 @@ button:not(:disabled):hover {
   margin-bottom: 2.5rem;
 }
 
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
 .header-label {
-  display: block;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 0.5rem;
+}
+
+.btn-music {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  background: var(--surface);
+  color: var(--text-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-music.on {
+  color: var(--accent);
+  border-color: rgba(184, 149, 107, 0.4);
 }
 
 .header h1 {

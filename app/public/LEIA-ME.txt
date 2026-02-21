@@ -1,0 +1,2 @@
+Coloque aqui um arquivo chamado music.mp3 para a música de fundo do site.
+O botão "Música" no topo da página liga e desliga a reprodução (volume em 30%).
