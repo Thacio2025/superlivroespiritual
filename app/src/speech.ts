@@ -6,8 +6,8 @@
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
 const API = "/.netlify/functions";
-const VOICE = "pt-BR-FranciscaNeural";
-const SPEECH_RATE = "-15%";
+const VOICE = "pt-BR-JulioNeural";
+const SPEECH_RATE = "70%";
 /** Token válido por 9 min (Azure dura 10). Assim o primeiro clique já usa token e o áudio sai. */
 const TOKEN_TTL_MS = 9 * 60 * 1000;
 /** Tamanho máximo por bloco de síntese (evita timeout em textos muito longos). */

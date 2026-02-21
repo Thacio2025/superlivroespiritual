@@ -40,14 +40,25 @@ export default function App() {
     if (!passage.trim()) return;
     setError("");
     setStatus("speaking");
+    // No celular, música e voz ao mesmo tempo podem conflitar; pausa a música durante a leitura.
+    const wasMusicOn = musicOn;
+    if (wasMusicOn && audioRef.current) {
+      audioRef.current.pause();
+    }
     try {
       await speak(passage);
-      setStatus("idle");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao reproduzir voz");
       setStatus("error");
+    } finally {
+      setStatus("idle");
+      // Retoma a música se estava ligada antes da leitura.
+      if (wasMusicOn && audioRef.current) {
+        audioRef.current.volume = 0.2;
+        audioRef.current.play().catch(() => {});
+      }
     }
-  }, [passage]);
+  }, [passage, musicOn]);
 
   // Pré-busca o token quando há fragmento; assim o primeiro "Ouvir" já tem token e o som sai.
   useEffect(() => {
@@ -60,7 +71,7 @@ export default function App() {
     if (musicOn) {
       audio.pause();
     } else {
-      audio.volume = 0.3;
+      audio.volume = 0.2;
       audio.play().catch(() => {});
     }
     setMusicOn(!musicOn);
