@@ -3,12 +3,11 @@ import { speak } from "./speech";
 
 const API = "/.netlify/functions";
 
-type Status = "idle" | "generating" | "reflecting" | "speaking" | "error";
+type Status = "idle" | "generating" | "speaking" | "error";
 
 export default function App() {
   const [theme, setTheme] = useState("");
   const [passage, setPassage] = useState("");
-  const [reflection, setReflection] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
 
@@ -16,7 +15,6 @@ export default function App() {
     setError("");
     setStatus("generating");
     setPassage("");
-    setReflection("");
     try {
       const res = await fetch(`${API}/generate`, {
         method: "POST",
@@ -33,104 +31,78 @@ export default function App() {
     }
   }, [theme]);
 
-  const handleReflect = useCallback(async () => {
-    if (!passage.trim()) return;
-    setError("");
-    setStatus("reflecting");
-    setReflection("");
-    try {
-      const res = await fetch(`${API}/reflect`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: passage }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha ao refletir");
-      setReflection(data.reflection ?? "");
-      setStatus("idle");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao refletir");
-      setStatus("error");
-    }
-  }, [passage]);
-
   const handleSpeak = useCallback(async () => {
-    const text = [passage, reflection].filter(Boolean).join("\n\n");
-    if (!text.trim()) return;
+    if (!passage.trim()) return;
     setError("");
     setStatus("speaking");
     try {
-      await speak(text);
+      await speak(passage);
       setStatus("idle");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao reproduzir voz");
       setStatus("error");
     }
-  }, [passage, reflection]);
+  }, [passage]);
 
-  const busy = status === "generating" || status === "reflecting" || status === "speaking";
+  const busy = status === "generating" || status === "speaking";
 
   return (
     <div className="app">
       <header className="header">
+        <span className="header-label">Escriba do Deserto</span>
         <h1>Super Livro</h1>
-        <p>Meditações infinitas a partir dos Padres do Deserto e da tradição mística</p>
+        <p>Fragmentos de sabedoria para a Lectio Divina</p>
       </header>
 
-      <input
-        type="text"
-        className="theme-input"
-        placeholder="Tema opcional (ex.: silêncio no deserto)"
-        value={theme}
-        onChange={(e) => setTheme(e.target.value)}
-      />
-
-      <div className="actions">
-        <button
-          className="btn-primary"
-          onClick={handleGenerate}
-          disabled={busy}
-        >
-          {status === "generating" ? "Gerando…" : "Gerar novo trecho"}
-        </button>
-        <button
-          className="btn-secondary"
-          onClick={handleReflect}
-          disabled={busy || !passage.trim()}
-        >
-          {status === "reflecting" ? "Refletindo…" : "Refletir (IA)"}
-        </button>
-        <button
-          className="btn-secondary"
-          onClick={handleSpeak}
-          disabled={busy || !passage.trim()}
-          title="Voz Azure (pt-BR). Se não ouvir, permita áudio para este site e confira as variáveis no Netlify."
-        >
-          {status === "speaking" ? "Reproduzindo…" : "Ouvir (voz)"}
-        </button>
+      <div className="controls">
+        <input
+          type="text"
+          className="theme-input"
+          placeholder="Tema opcional (ex.: hesychia, cela, silêncio)"
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+        />
+        <div className="actions">
+          <button
+            className="btn-primary"
+            onClick={handleGenerate}
+            disabled={busy}
+          >
+            {status === "generating" ? "Gerando…" : "Gerar fragmento"}
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={handleSpeak}
+            disabled={busy || !passage.trim()}
+          >
+            {status === "speaking" ? "…" : "Ouvir"}
+          </button>
+        </div>
       </div>
-      <p className="hint">Se a voz não sair, permita áudio para este site no navegador e confira AZURE_SPEECH_KEY e AZURE_SPEECH_REGION no Netlify.</p>
 
-      <p className="status">
-        {status === "generating" && "Gerando trecho…"}
-        {status === "reflecting" && "Gerando reflexão…"}
-        {status === "speaking" && "Reproduzindo com voz (pt-BR)…"}
-      </p>
+      {status === "generating" && (
+        <div className="status-line">
+          <span className="status-dot" />
+          Gerando fragmento…
+        </div>
+      )}
+      {status === "speaking" && (
+        <div className="status-line">
+          <span className="status-dot" />
+          Reproduzindo…
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
 
-      {!passage && !reflection && status === "idle" && (
-        <p className="muted-intro">Clique em <strong>Gerar novo trecho</strong> para começar.</p>
+      {!passage && status === "idle" && (
+        <p className="muted-intro">
+          Escolha um tema, se quiser, e clique em <strong>Gerar fragmento</strong>.
+        </p>
       )}
       {passage && (
-        <section className="passage">
+        <article className="passage">
           {passage}
-        </section>
-      )}
-      {reflection && (
-        <section className="reflection-box">
-          <h3>Reflexão</h3>
-          {reflection}
-        </section>
+        </article>
       )}
     </div>
   );

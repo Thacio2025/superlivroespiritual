@@ -7,6 +7,17 @@ import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
 const API = "/.netlify/functions";
 const VOICE = "pt-BR-FranciscaNeural";
+/** Velocidade da fala: -15% = um pouco mais devagar (aceita -50% a +50%, ou "slow", "x-slow") */
+const SPEECH_RATE = "-15%";
+
+function escapeSsml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
 export async function speak(text: string): Promise<void> {
   const tokenRes = await fetch(`${API}/speech-token`);
@@ -27,9 +38,11 @@ export async function speak(text: string): Promise<void> {
   const audioConfig = sdk.AudioConfig.fromDefaultSpeakerOutput();
   const synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
 
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="pt-BR"><voice name="${VOICE}"><prosody rate="${SPEECH_RATE}">${escapeSsml(text)}</prosody></voice></speak>`;
+
   return new Promise((resolve, reject) => {
-    synthesizer.speakTextAsync(
-      text,
+    synthesizer.speakSsmlAsync(
+      ssml,
       () => {
         synthesizer.close();
         resolve();
