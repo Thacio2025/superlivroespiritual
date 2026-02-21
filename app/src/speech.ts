@@ -1,7 +1,10 @@
 /**
  * Azure Speech (Microsoft Cognitive Services) no browser.
  * Obtém token do backend (Netlify function) e usa o SDK para TTS (voz pt-BR-FranciscaNeural).
+ * Import estático evita "Failed to fetch dynamically imported module" após novo deploy.
  */
+import * as sdk from "microsoft-cognitiveservices-speech-sdk";
+
 const API = "/.netlify/functions";
 const VOICE = "pt-BR-FranciscaNeural";
 
@@ -18,7 +21,6 @@ export async function speak(text: string): Promise<void> {
   }
   const { token, region } = (await tokenRes.json()) as { token: string; region: string };
 
-  const sdk = await import("microsoft-cognitiveservices-speech-sdk");
   const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);
   speechConfig.speechSynthesisVoiceName = VOICE;
 
